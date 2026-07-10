@@ -8,7 +8,7 @@ import {
   ITEM_GAP_BOOST, ITEM_SLOW_DURATION, ITEM_SLOW_FACTOR, JUMP_VELOCITY,
   LAND_SQUASH_MS, LEVEL_1_REQUIREMENT, LEVEL_REQUIREMENT_STEP, MAX_ITEMS, MAX_JUMPS,
   PICKUP_SIZE, PICKUP_SPAWN_MAX, PICKUP_SPAWN_MIN, PICKUP_Y, PIT_SAFE_HEIGHT,
-  PLAYER_SIZE, PLAYER_X, HITBOX_PADDING, STORAGE_KEYS, getDifficultyForLevel, phaseLabel as computePhaseLabel,
+  PLAYER_SIZE, PLAYER_X, HITBOX_PADDING, OBSTACLE_HITBOX_PADDING, DEBUG_COLLISION, STORAGE_KEYS, getDifficultyForLevel, phaseLabel as computePhaseLabel,
   pickWeighted, randRange,
 } from './constants'
 import { spawnDust, spawnHitBurst, spawnScorePop, updateParticles } from './particles'
@@ -405,24 +405,49 @@ export class GameEngine {
         this.callbacks.onProgressChange?.(this.obstaclesThisLevel / this.levelRequirement)
       }
 
-      const playerLeft = PLAYER_X + HITBOX_PADDING
-      const playerRight = PLAYER_X + PLAYER_SIZE - HITBOX_PADDING
-      const obsLeft = newX
-      const obsRight = newX + obs.width
-      const horizontalOverlap = playerLeft < obsRight && playerRight > obsLeft
-      if (obs.type === 'pit') {
-        if (horizontalOverlap && this.player.y < PIT_SAFE_HEIGHT) { collided = true; reason = 'pit' }
-      } else if (obs.type === 'air') {
-        const playerTop = this.player.y + PLAYER_SIZE - HITBOX_PADDING
-        const playerBottom = this.player.y + HITBOX_PADDING
-        if (horizontalOverlap && playerTop > (obs.bandMin ?? 0) && playerBottom < (obs.bandMax ?? 0)) {
-          collided = true
-          reason = 'air'
-        }
-      } else {
-        const playerBottom = this.player.y + HITBOX_PADDING
-        if (horizontalOverlap && playerBottom < obs.height) collided = true
-      }
+      
+          // use hitbox circular para o jogador e retângulos reduzidos para obstáculos
+          const visual = this.getPlayerVisual()
+          const centerX = PLAYER_X + PLAYER_SIZE / 2
+          const centerY = this.player.y + PLAYER_SIZE / 2 + visual.bobY
+          const radius = Math.max(2, PLAYER_SIZE / 2 - HITBOX_PADDING)
+
+          const obsLeft = newX + OBSTACLE_HITBOX_PADDING
+          const obsRight = newX + Math.max(0, obs.width - OBSTACLE_HITBOX_PADDING)
+
+          if (obs.type === 'pit') {
+            const horizontalOverlap = centerX > obsLeft && centerX < obsRight
+            if (horizontalOverlap && this.player.y < PIT_SAFE_HEIGHT) { collided = true; reason = 'pit' }
+          } else if (obs.type === 'air') {
+            // air obstacles use a band (bandMin/bandMax) measured em altura acima do solo
+            const bandMin = (obs.bandMin ?? 0) + OBSTACLE_HITBOX_PADDING
+            const bandMax = (obs.bandMax ?? 0) - OBSTACLE_HITBOX_PADDING
+            const rectTop = bandMax
+            const rectBottom = bandMin
+            const rectLeft = obsLeft
+            const rectRight = obsRight
+            // circle-rect collision
+            const closestX = Math.max(rectLeft, Math.min(centerX, rectRight))
+            const closestY = Math.max(rectBottom, Math.min(centerY, rectTop))
+            const dx = centerX - closestX
+            const dy = centerY - closestY
+            if (dx * dx + dy * dy <= radius * radius) { collided = true; reason = 'air' }
+          } else {
+            // ground obstacle: rect from ground (0) up to obs.height
+            const rectLeft = obsLeft
+            const rectRight = obsRight
+            const rectBottom = 0 + OBSTACLE_HITBOX_PADDING
+            const rectTop = Math.max(rectBottom, obs.height - OBSTACLE_HITBOX_PADDING)
+            const closestX = Math.max(rectLeft, Math.min(centerX, rectRight))
+            const closestY = Math.max(rectBottom, Math.min(centerY, rectTop))
+            const dx = centerX - closestX
+            const dy = centerY - closestY
+            if (dx * dx + dy * dy <= radius * radius) { collided = true }
+          }
+
+          if (collided && DEBUG_COLLISION) {
+            console.log('collision debug', { obsId: obs.id, type: obs.type, newX, width: obs.width, height: obs.height, centerX, centerY, radius, reason })
+          }
 
       remaining.push({ ...obs, x: newX, passed, age: obs.age + dt * 1000 })
     }

@@ -7,6 +7,10 @@ export const HITBOX_PADDING = 6
 export const MAX_JUMPS = 2
 export const PLAYER_X = 56
 export const GROUND_HEIGHT = 64
+// Padding interno aplicado aos obstáculos para reduzir sua hitbox (px)
+export const OBSTACLE_HITBOX_PADDING = 12
+// Habilita logs de debug de colisão (desligar em produção)
+export const DEBUG_COLLISION = false
 
 // Curva de dificuldade por fase (velocidade e frequência de obstáculos)
 export function getDifficultyForLevel(level: number) {

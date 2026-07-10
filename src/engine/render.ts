@@ -1,6 +1,6 @@
 import type { Decor, Obstacle, Particle } from '../types'
 import type { GameEngine } from './GameEngine'
-import { GROUND_HEIGHT, PICKUP_SIZE, PICKUP_Y, PLAYER_SIZE, PLAYER_X } from './constants'
+import { GROUND_HEIGHT, PICKUP_SIZE, PICKUP_Y, PLAYER_SIZE, PLAYER_X, HITBOX_PADDING, OBSTACLE_HITBOX_PADDING, DEBUG_HITBOX, AIR_SIZE } from './constants'
 
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.min(r, w / 2, h / 2)
@@ -358,6 +358,65 @@ export function renderFrame(ctx: CanvasRenderingContext2D, engine: GameEngine, w
   )
 
   drawParticles(ctx, engine.particles, groundScreenY)
+
+  // debug visual de hitboxes
+  if (DEBUG_HITBOX) {
+    const visual = engine.getPlayerVisual()
+    const playerCenterX = PLAYER_X + PLAYER_SIZE / 2
+    const playerCenterY = groundScreenY - (engine.player.y + visual.bobY) - PLAYER_SIZE / 2
+    const playerRadius = Math.max(2, PLAYER_SIZE / 2 - HITBOX_PADDING)
+
+    // player hitbox
+    ctx.save()
+    ctx.strokeStyle = 'rgba(0,200,0,0.9)'
+    ctx.fillStyle = 'rgba(0,200,0,0.12)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(playerCenterX, playerCenterY, playerRadius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    ctx.restore()
+
+    // obstacles hitboxes
+    for (const obs of engine.obstacles) {
+      if (obs.type === 'air') {
+        const bandCenter = ((obs.bandMin ?? 0) + (obs.bandMax ?? 0)) / 2
+        const screenY = groundScreenY - bandCenter
+        const rectX = obs.x + OBSTACLE_HITBOX_PADDING
+        const rectW = Math.max(0, obs.width - OBSTACLE_HITBOX_PADDING * 2)
+        ctx.save()
+        ctx.strokeStyle = 'rgba(0,0,200,0.9)'
+        ctx.fillStyle = 'rgba(0,0,200,0.12)'
+        ctx.lineWidth = 2
+        ctx.strokeRect(rectX, screenY - AIR_SIZE / 2, rectW, AIR_SIZE)
+        ctx.fillRect(rectX, screenY - AIR_SIZE / 2, rectW, AIR_SIZE)
+        ctx.restore()
+      } else if (obs.type === 'pit') {
+        const screenY = groundScreenY
+        const rectX = obs.x + OBSTACLE_HITBOX_PADDING
+        const rectW = Math.max(0, obs.width - OBSTACLE_HITBOX_PADDING * 2)
+        ctx.save()
+        ctx.strokeStyle = 'rgba(200,100,0,0.9)'
+        ctx.fillStyle = 'rgba(200,100,0,0.12)'
+        ctx.lineWidth = 2
+        ctx.strokeRect(rectX, screenY, rectW, GROUND_HEIGHT)
+        ctx.fillRect(rectX, screenY, rectW, GROUND_HEIGHT)
+        ctx.restore()
+      } else {
+        const screenY = groundScreenY - obs.height
+        const rectX = obs.x + OBSTACLE_HITBOX_PADDING
+        const rectW = Math.max(0, obs.width - OBSTACLE_HITBOX_PADDING * 2)
+        const rectH = Math.max(0, obs.height - OBSTACLE_HITBOX_PADDING * 2)
+        ctx.save()
+        ctx.strokeStyle = 'rgba(200,200,0,0.9)'
+        ctx.fillStyle = 'rgba(200,200,0,0.12)'
+        ctx.lineWidth = 2
+        ctx.strokeRect(rectX, screenY + OBSTACLE_HITBOX_PADDING, rectW, rectH)
+        ctx.fillRect(rectX, screenY + OBSTACLE_HITBOX_PADDING, rectW, rectH)
+        ctx.restore()
+      }
+    }
+  }
 
   if (engine.status === 'playing' && engine.hunterNear) {
     drawHunterWarningVignette(ctx, width, gameHeight, engine.gameClock)

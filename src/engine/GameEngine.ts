@@ -406,6 +406,13 @@ export class GameEngine {
       }
 
       
+          // ignore obstacles already passed (behind player) or fully off-screen to the right
+          const isRenderable = newX < this.canvasWidth && newX + obs.width > -50
+          if (passed || !isRenderable) {
+            remaining.push({ ...obs, x: newX, passed, age: obs.age + dt * 1000 })
+            continue
+          }
+
           // use hitbox circular para o jogador e retângulos reduzidos para obstáculos
           const visual = this.getPlayerVisual()
           const centerX = PLAYER_X + PLAYER_SIZE / 2
@@ -414,6 +421,9 @@ export class GameEngine {
 
           const obsLeft = newX + OBSTACLE_HITBOX_PADDING
           const obsRight = newX + Math.max(0, obs.width - OBSTACLE_HITBOX_PADDING)
+
+          let closestX: number | null = null
+          let closestY: number | null = null
 
           if (obs.type === 'pit') {
             const horizontalOverlap = centerX > obsLeft && centerX < obsRight
@@ -427,8 +437,8 @@ export class GameEngine {
             const rectLeft = obsLeft
             const rectRight = obsRight
             // circle-rect collision
-            const closestX = Math.max(rectLeft, Math.min(centerX, rectRight))
-            const closestY = Math.max(rectBottom, Math.min(centerY, rectTop))
+            closestX = Math.max(rectLeft, Math.min(centerX, rectRight))
+            closestY = Math.max(rectBottom, Math.min(centerY, rectTop))
             const dx = centerX - closestX
             const dy = centerY - closestY
             if (dx * dx + dy * dy <= radius * radius) { collided = true; reason = 'air' }
@@ -438,15 +448,29 @@ export class GameEngine {
             const rectRight = obsRight
             const rectBottom = 0 + OBSTACLE_HITBOX_PADDING
             const rectTop = Math.max(rectBottom, obs.height - OBSTACLE_HITBOX_PADDING)
-            const closestX = Math.max(rectLeft, Math.min(centerX, rectRight))
-            const closestY = Math.max(rectBottom, Math.min(centerY, rectTop))
+            closestX = Math.max(rectLeft, Math.min(centerX, rectRight))
+            closestY = Math.max(rectBottom, Math.min(centerY, rectTop))
             const dx = centerX - closestX
             const dy = centerY - closestY
             if (dx * dx + dy * dy <= radius * radius) { collided = true }
           }
 
           if (collided && DEBUG_COLLISION) {
-            console.log('collision debug', { obsId: obs.id, type: obs.type, newX, width: obs.width, height: obs.height, centerX, centerY, radius, reason })
+            const distance = Math.sqrt((centerX - (closestX ?? 0)) ** 2 + (centerY - (closestY ?? 0)) ** 2)
+            console.log('collision debug', {
+              obsId: obs.id,
+              obsType: obs.type,
+              obsX: newX,
+              obsWidth: obs.width,
+              obsHeight: obs.height,
+              obsPassed: passed,
+              obsAge: obs.age,
+              playerX: centerX,
+              playerY: centerY,
+              playerRadius: radius,
+              closestX, closestY, distance,
+              reason,
+            })
           }
 
       remaining.push({ ...obs, x: newX, passed, age: obs.age + dt * 1000 })

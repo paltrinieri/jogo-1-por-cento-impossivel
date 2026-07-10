@@ -11,6 +11,8 @@ export const GROUND_HEIGHT = 64
 export const OBSTACLE_HITBOX_PADDING = 12
 // Habilita logs de debug de colisão (desligar em produção)
 export const DEBUG_COLLISION = false
+// Habilita desenho visual das hitboxes para depuração
+export const DEBUG_HITBOX = false
 
 // Curva de dificuldade por fase (velocidade e frequência de obstáculos)
 export function getDifficultyForLevel(level: number) {

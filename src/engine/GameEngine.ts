@@ -55,6 +55,8 @@ export class GameEngine {
   particles: Particle[] = []
 
   canvasWidth = 360
+  // estado temporário para destacar a colisão antes de efetivar o fim de jogo
+  highlightingDeath: { obsId: number; reason: DeathReason; elapsed: number } | null = null
 
   private idCounter = 0
   private spawnTimer = 0
@@ -297,6 +299,17 @@ export class GameEngine {
     const dt = Math.min(dtRaw, 0.032)
     this.gameClock += dt
 
+    // Se estamos mostrando destaque visual de colisão, incrementar timer e aguardar
+    if (this.highlightingDeath) {
+      this.highlightingDeath.elapsed += dt * 1000
+      if (this.highlightingDeath.elapsed >= 1000) {
+        const reason = this.highlightingDeath.reason
+        this.highlightingDeath = null
+        this.endGame(reason)
+      }
+      return
+    }
+
     // física do jogador
     let vy = this.player.vy - GRAVITY * dt
     let y = this.player.y + vy * dt
@@ -381,6 +394,7 @@ export class GameEngine {
     // movimento, pontuação, fases e colisão
     let collided = false
     let reason: DeathReason = 'obstacle'
+    let causingObs: Obstacle | null = null
     const remaining: Obstacle[] = []
     for (const obs of this.obstacles) {
       const newX = obs.x - difficulty.speed * dt
@@ -427,7 +441,7 @@ export class GameEngine {
 
           if (obs.type === 'pit') {
             const horizontalOverlap = centerX > obsLeft && centerX < obsRight
-            if (horizontalOverlap && this.player.y < PIT_SAFE_HEIGHT) { collided = true; reason = 'pit' }
+            if (horizontalOverlap && this.player.y < PIT_SAFE_HEIGHT) { collided = true; reason = 'pit'; causingObs = obs }
           } else if (obs.type === 'air') {
             // air obstacles use a band (bandMin/bandMax) measured em altura acima do solo
             const bandMin = (obs.bandMin ?? 0) + OBSTACLE_HITBOX_PADDING
@@ -441,7 +455,7 @@ export class GameEngine {
             closestY = Math.max(rectBottom, Math.min(centerY, rectTop))
             const dx = centerX - closestX
             const dy = centerY - closestY
-            if (dx * dx + dy * dy <= radius * radius) { collided = true; reason = 'air' }
+            if (dx * dx + dy * dy <= radius * radius) { collided = true; reason = 'air'; causingObs = obs }
           } else {
             // ground obstacle: rect from ground (0) up to obs.height
             const rectLeft = obsLeft
@@ -452,7 +466,7 @@ export class GameEngine {
             closestY = Math.max(rectBottom, Math.min(centerY, rectTop))
             const dx = centerX - closestX
             const dy = centerY - closestY
-            if (dx * dx + dy * dy <= radius * radius) { collided = true }
+            if (dx * dx + dy * dy <= radius * radius) { collided = true; causingObs = obs }
           }
 
           if (collided && DEBUG_COLLISION) {
@@ -480,7 +494,10 @@ export class GameEngine {
     updateParticles(this.particles, dt)
 
     if (collided) {
-      this.endGame(reason)
+      if (!this.highlightingDeath && causingObs) {
+        this.highlightingDeath = { obsId: causingObs.id, reason, elapsed: 0 }
+      }
+      return
     }
   }
 

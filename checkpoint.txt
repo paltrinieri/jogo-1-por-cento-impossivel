@@ -1,0 +1,25 @@
+Estado atual do projeto:
+- Projeto React/Vite funcionando e pronto para teste local.
+- Build de produção passou com sucesso.
+
+Link/local onde está rodando:
+- Local: http://localhost:5173/
+- Rede local: http://192.168.18.2:5173/
+
+Arquivos principais alterados:
+- Nenhum arquivo alterado até o momento.
+
+Comandos executados:
+- npm.cmd run build
+- npm.cmd run dev -- --host 0.0.0.0
+
+Resultado do build/deploy:
+- Build OK.
+- Deploy não realizado.
+
+Bugs visíveis ou pontos de atenção:
+- Nenhum erro de build identificado.
+- Ainda é preciso validar experiência em celular real pelo link/local.
+
+Próximo passo recomendado:
+- Publicar em Vercel e testar o link no celular.

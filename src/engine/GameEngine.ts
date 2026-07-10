@@ -8,7 +8,7 @@ import {
   ITEM_GAP_BOOST, ITEM_SLOW_DURATION, ITEM_SLOW_FACTOR, JUMP_VELOCITY,
   LAND_SQUASH_MS, LEVEL_1_REQUIREMENT, LEVEL_REQUIREMENT_STEP, MAX_ITEMS, MAX_JUMPS,
   PICKUP_SIZE, PICKUP_SPAWN_MAX, PICKUP_SPAWN_MIN, PICKUP_Y, PIT_SAFE_HEIGHT,
-  PLAYER_SIZE, PLAYER_X, STORAGE_KEYS, getDifficultyForLevel, phaseLabel as computePhaseLabel,
+  PLAYER_SIZE, PLAYER_X, HITBOX_PADDING, STORAGE_KEYS, getDifficultyForLevel, phaseLabel as computePhaseLabel,
   pickWeighted, randRange,
 } from './constants'
 import { spawnDust, spawnHitBurst, spawnScorePop, updateParticles } from './particles'
@@ -405,17 +405,23 @@ export class GameEngine {
         this.callbacks.onProgressChange?.(this.obstaclesThisLevel / this.levelRequirement)
       }
 
-      const horizontalOverlap = PLAYER_X < newX + obs.width && PLAYER_X + PLAYER_SIZE > newX
+      const playerLeft = PLAYER_X + HITBOX_PADDING
+      const playerRight = PLAYER_X + PLAYER_SIZE - HITBOX_PADDING
+      const obsLeft = newX
+      const obsRight = newX + obs.width
+      const horizontalOverlap = playerLeft < obsRight && playerRight > obsLeft
       if (obs.type === 'pit') {
         if (horizontalOverlap && this.player.y < PIT_SAFE_HEIGHT) { collided = true; reason = 'pit' }
       } else if (obs.type === 'air') {
-        const playerTop = this.player.y + PLAYER_SIZE
-        if (horizontalOverlap && playerTop > (obs.bandMin ?? 0) && this.player.y < (obs.bandMax ?? 0)) {
+        const playerTop = this.player.y + PLAYER_SIZE - HITBOX_PADDING
+        const playerBottom = this.player.y + HITBOX_PADDING
+        if (horizontalOverlap && playerTop > (obs.bandMin ?? 0) && playerBottom < (obs.bandMax ?? 0)) {
           collided = true
           reason = 'air'
         }
       } else {
-        if (horizontalOverlap && this.player.y < obs.height) collided = true
+        const playerBottom = this.player.y + HITBOX_PADDING
+        if (horizontalOverlap && playerBottom < obs.height) collided = true
       }
 
       remaining.push({ ...obs, x: newX, passed, age: obs.age + dt * 1000 })

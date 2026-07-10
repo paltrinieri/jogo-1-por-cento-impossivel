@@ -3,6 +3,7 @@ export const GRAVITY = 2600
 export const JUMP_VELOCITY = 780
 export const GROUND_Y = 0
 export const PLAYER_SIZE = 34
+export const HITBOX_PADDING = 6
 export const MAX_JUMPS = 2
 export const PLAYER_X = 56
 export const GROUND_HEIGHT = 64
